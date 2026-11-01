@@ -48,12 +48,7 @@ function Hero({ stats, onReset }: { stats: UnifiedStats; onReset: (() => void) |
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
 
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-5 px-4 pb-10 pt-14 text-center">
-        <Reveal className="w-full">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">
-            {stats.hero.eyebrow}
-          </p>
-        </Reveal>
-        <Reveal delay={0.05}>
+        <Reveal>
           {isNumber ? (
             <h1 className="text-6xl font-black tracking-tight tabular-nums sm:text-8xl">
               {counted.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -65,16 +60,16 @@ function Hero({ stats, onReset }: { stats: UnifiedStats; onReset: (() => void) |
             </h1>
           )}
         </Reveal>
-        <Reveal delay={0.1}>
+        <Reveal delay={0.05}>
           <p className="max-w-md text-pretty text-muted-foreground">{stats.hero.caption}</p>
         </Reveal>
-        <Reveal delay={0.15}>
+        <Reveal delay={0.1}>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <ShareButton
               spec={() => recapSpec(stats)}
               variant="full"
               label="Share my recap"
-              filename="statify-recap.png"
+              filename="unison-recap.png"
               text={SHARE_TEXT}
             />
             {onReset && (
@@ -90,10 +85,8 @@ function Hero({ stats, onReset }: { stats: UnifiedStats; onReset: (() => void) |
 }
 
 /**
- * Both the API and the basic "Account data" export leave cards unrenderable —
- * the API has no play history, the basic export has no album/device/shuffle
- * fields. Rather than let those sections silently vanish, say what's missing
- * and point at the extended streaming history, which fills every one of them.
+ * The basic Spotify account-data export lacks album/device/shuffle fields.
+ * Explain that limitation instead of letting those sections vanish silently.
  */
 function ExportUpsell({ intro, missing }: { intro: string; missing: string[] }) {
   return (
@@ -130,18 +123,6 @@ function ExportUpsell({ intro, missing }: { intro: string; missing: string[] }) 
     </Card>
   )
 }
-
-const CONNECT_INTRO =
-  'Spotify’s API only hands out your top lists and last 50 plays, so some stats can’t be worked out here. The extended streaming history export carries every play you’ve ever made — upload it and you also get:'
-
-const CONNECT_MISSING = [
-  'Total hours and plays, all time',
-  'Skip rate, shuffle rate and weekday vs. weekend',
-  'Longest day streak and your record listening day',
-  'Year-by-year and month-by-month history',
-  'Your #1 artist for every single year',
-  'Which devices and countries you listened from',
-]
 
 const BASIC_INTRO =
   'This is the basic “Account data” export — it covers roughly the past year and records only the time, artist and track of each play. The “Extended streaming history” export goes back to your very first play and adds:'
@@ -357,16 +338,10 @@ export function StatsDashboard() {
           </div>
         )}
 
-        {stats.source !== 'upload' ? (
+        {stats.basicExport && (
           <Reveal>
-            <ExportUpsell intro={CONNECT_INTRO} missing={CONNECT_MISSING} />
+            <ExportUpsell intro={BASIC_INTRO} missing={BASIC_MISSING} />
           </Reveal>
-        ) : (
-          stats.basicExport && (
-            <Reveal>
-              <ExportUpsell intro={BASIC_INTRO} missing={BASIC_MISSING} />
-            </Reveal>
-          )
         )}
 
         <p className="pt-4 text-center text-xs text-muted-foreground">{stats.footnote}</p>

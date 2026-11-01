@@ -1,17 +1,16 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://sst.siv19.dev'),
-  title: 'Statify — Your Spotify, Visualized',
+  metadataBase: new URL('https://music.siv19.dev'),
+  title: 'Unison — Your Listening, Unpacked',
   description:
-    'Explore your Spotify listening in 3D: genre galaxies, era maps, listening clocks, and insights Spotify never shows you. Or upload your data export for an all-time recap — no login required.',
-  applicationName: 'Statify',
+    'Explore your Spotify, Apple Music, or YouTube Music history in 3D from a private, browser-processed export ZIP. No login and no music API.',
+  applicationName: 'Unison',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -21,17 +20,17 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
   },
   openGraph: {
-    title: 'Statify — Your Spotify, Visualized',
+    title: 'Unison — Your Listening, Unpacked',
     description:
-      'Your Spotify listening in 3D — genre galaxies, listening clocks, and a shareable all-time recap from your data export. No login required.',
-    url: 'https://sst.siv19.dev',
-    siteName: 'Statify',
+      'A private, shareable lifetime recap from your Spotify, Apple Music, or YouTube Music export.',
+    url: 'https://music.siv19.dev',
+    siteName: 'Unison',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Statify — Your Spotify, Visualized',
-    description: 'Your Spotify listening in 3D, plus a shareable all-time recap from your data export.',
+    title: 'Unison — Your Listening, Unpacked',
+    description: 'Your music history in 3D, processed privately from your export ZIP.',
   },
 }
 
@@ -44,7 +43,6 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         {children}
-        <Analytics />
       </body>
     </html>
   )

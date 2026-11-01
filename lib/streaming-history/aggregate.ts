@@ -1,7 +1,6 @@
-// Pure functions over Spotify Extended Streaming History. `normalize` runs once
-// in the worker to turn raw rows into compact, pre-parsed plays; `aggregate`
-// then runs on the main thread on every filter change — no Date parsing, no
-// network — so 200k+ plays re-crunch in a few milliseconds.
+// Pure functions over the common browser-normalized play shape. `normalize`
+// handles Spotify rows; the Apple and YouTube parsers produce the same Play[]
+// contract before aggregation.
 import type {
   AlbumAgg,
   ArtistAgg,
@@ -117,7 +116,7 @@ function fromBasicRow(row: RawBasicPlay): Play | null {
 /** Raw rows → compact plays (music only) + filter metadata. */
 export function normalize(
   rows: RawPlay[] | RawBasicPlay[],
-  format: HistoryFormat = 'extended',
+  format: HistoryFormat = 'spotify-extended',
 ): { plays: Play[]; meta: ParseMeta } {
   const plays: Play[] = []
   const years = new Set<number>()
@@ -125,7 +124,7 @@ export function normalize(
 
   for (const row of rows) {
     const play =
-      format === 'basic'
+      format === 'spotify-basic'
         ? fromBasicRow(row as RawBasicPlay)
         : fromExtendedRow(row as RawPlay)
     if (!play) continue
@@ -142,16 +141,29 @@ export function normalize(
   return {
     plays,
     meta: {
+      source: 'spotify',
       years: [...years].sort((a, b) => a - b),
       platforms: [...platforms].sort(),
       totalPlays: plays.length,
       format,
+      durationKnown: true,
+      approximateTimes: false,
     },
   }
 }
 
 function topBy<T extends { ms: number }>(map: Map<string, T>, n: number): T[] {
   return [...map.values()].sort((a, b) => b.ms - a.ms).slice(0, n)
+}
+
+function topByMeasure<T extends { ms: number; plays: number }>(
+  map: Map<string, T>,
+  n: number,
+  durationKnown: boolean,
+): T[] {
+  return [...map.values()]
+    .sort((a, b) => (durationKnown ? b.ms - a.ms : b.plays - a.plays))
+    .slice(0, n)
 }
 
 function matches(p: Play, f: PlayFilters): boolean {
@@ -181,6 +193,7 @@ export function aggregate(
 
   let totalPlays = 0
   let totalMs = 0
+  let durationPlayCount = 0
   let skips = 0
   let shuffled = 0
   let offlinePlays = 0
@@ -206,8 +219,9 @@ export function aggregate(
 
   for (const p of plays) {
     if (!matches(p, filters)) continue
-    const { ms } = p
-    const minutes = ms / 60_000
+    const durationMs = p.ms ?? 0
+    // Time buckets double as play-count buckets for sources with no duration.
+    const minutes = p.ms === null ? 1 : durationMs / 60_000
 
     if (p.t - prevTs > SESSION_GAP_MS) {
       closeSession()
@@ -217,10 +231,11 @@ export function aggregate(
     }
     prevTs = p.t
     sessionTracks++
-    sessionMs += ms
+    sessionMs += durationMs
 
     totalPlays++
-    totalMs += ms
+    totalMs += durationMs
+    if (p.ms !== null) durationPlayCount++
     if (p.skip) skips++
     if (p.shuffle) shuffled++
     if (p.offline) offlinePlays++
@@ -233,7 +248,7 @@ export function aggregate(
     // Track
     const track = tracks.get(p.uri)
     if (track) {
-      track.ms += ms
+      track.ms += durationMs
       track.plays++
       if (p.skip) track.skips++
     } else {
@@ -242,7 +257,7 @@ export function aggregate(
         name: p.track,
         artist: p.artist,
         album: p.album,
-        ms,
+        ms: durationMs,
         plays: 1,
         skips: p.skip ? 1 : 0,
       })
@@ -251,14 +266,14 @@ export function aggregate(
     // Artist
     const artist = artists.get(p.artist)
     if (artist) {
-      artist.ms += ms
+      artist.ms += durationMs
       artist.plays++
       artist._tracks.add(p.uri)
       if (p.year < artist.firstYear) artist.firstYear = p.year
     } else {
       artists.set(p.artist, {
         name: p.artist,
-        ms,
+        ms: durationMs,
         plays: 1,
         distinctTracks: 0,
         firstYear: p.year,
@@ -271,10 +286,10 @@ export function aggregate(
       const key = `${p.album} ${p.artist}`
       const album = albums.get(key)
       if (album) {
-        album.ms += ms
+        album.ms += durationMs
         album.plays++
       } else {
-        albums.set(key, { name: p.album, artist: p.artist, ms, plays: 1 })
+        albums.set(key, { name: p.album, artist: p.artist, ms: durationMs, plays: 1 })
       }
     }
 
@@ -332,15 +347,17 @@ export function aggregate(
 
   closeSession()
   for (const artist of artists.values()) artist.distinctTracks = artist._tracks.size
+  const durationKnown = durationPlayCount > 0
 
   const peakHour = clock.reduce((max, b) => (b.minutes > max.minutes ? b : max), clock[0]).hour
 
   // Artist diversity: normalized Shannon entropy over listening time, so it
   // reads on the same 0–100 scale as the genre diversity on the API path.
   let artistDiversity = 0
-  if (artists.size > 1 && totalMs > 0) {
+  const diversityTotal = durationKnown ? totalMs : totalPlays
+  if (artists.size > 1 && diversityTotal > 0) {
     const entropy = -[...artists.values()].reduce((sum, a) => {
-      const share = a.ms / totalMs
+      const share = (durationKnown ? a.ms : a.plays) / diversityTotal
       return share > 0 ? sum + share * Math.log(share) : sum
     }, 0)
     artistDiversity = Math.round((entropy / Math.log(artists.size)) * 100)
@@ -444,13 +461,13 @@ export function aggregate(
     streak = { days: bestLen, start: bestStart, end: bestEnd }
   }
 
-  const totalMinutes = totalMs / 60_000
+  const totalMinutes = durationKnown ? totalMs / 60_000 : totalPlays
   const daysListened = days.size
 
   return {
     generatedAt: new Date().toISOString(),
     totalPlays,
-    totalMs,
+    totalMs: durationKnown ? totalMs : null,
     distinctTracks: tracks.size,
     distinctArtists: artists.size,
     firstPlay: Number.isFinite(firstTs) ? new Date(firstTs).toISOString() : null,
@@ -466,9 +483,15 @@ export function aggregate(
     offlineRate: totalPlays ? offlinePlays / totalPlays : 0,
     peakHour,
     peakHourPersona: peakHourPersona(peakHour),
-    topTracks: topBy(tracks, 30),
-    topArtists: topBy(artists, 30).map(({ _tracks, ...a }) => a),
-    topAlbums: topBy(albums, 20),
+    topTracks: topByMeasure(tracks, 30, durationKnown),
+    topArtists: topByMeasure(artists, 30, durationKnown).map((artist) => ({
+      name: artist.name,
+      ms: artist.ms,
+      plays: artist.plays,
+      distinctTracks: artist.distinctTracks,
+      firstYear: artist.firstYear,
+    })),
+    topAlbums: topByMeasure(albums, 20, durationKnown),
     byYear: [...years.entries()]
       .sort(([a], [b]) => a - b)
       .map(([year, v]) => ({ year, minutes: Math.round(v.minutes), plays: v.plays })),
@@ -483,11 +506,11 @@ export function aggregate(
     platforms: topBy(
       new Map([...platforms].map(([k, v]) => [k, { ...v, ms: v.minutes }])),
       6,
-    ).map(({ ms, ...p }) => ({ ...p, minutes: Math.round(p.minutes) })),
+    ).map((row) => ({ label: row.label, minutes: Math.round(row.minutes), plays: row.plays })),
     countries: topBy(
       new Map([...countries].map(([k, v]) => [k, { ...v, ms: v.minutes }])),
       8,
-    ).map(({ ms, ...c }) => ({ ...c, minutes: Math.round(c.minutes) })),
+    ).map((row) => ({ label: row.label, minutes: Math.round(row.minutes), plays: row.plays })),
     reasonEnd: [],
     recordDay: recordDay ? { ...recordDay, minutes: Math.round(recordDay.minutes) } : null,
     topArtistPerYear,

@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { UploadCloud, ShieldCheck, Loader2, AlertCircle } from 'lucide-react'
-import type { ParseMeta, Play, WorkerResponse } from '@/lib/streaming-history/types'
+import type {
+  DataPlatform,
+  ParseMeta,
+  Play,
+  WorkerResponse,
+} from '@/lib/streaming-history/types'
 
 type Phase =
   | { status: 'idle' }
@@ -12,8 +17,10 @@ type Phase =
 
 export function UploadDropzone({
   onReady,
+  source,
 }: {
   onReady: (plays: Play[], meta: ParseMeta) => void
+  source: DataPlatform
 }) {
   const [phase, setPhase] = useState<Phase>({ status: 'idle' })
   const [dragging, setDragging] = useState(false)
@@ -25,11 +32,9 @@ export function UploadDropzone({
   const process = useCallback(
     async (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return
-      const accepted = Array.from(fileList).filter(
-        (f) => f.name.toLowerCase().endsWith('.zip') || f.name.toLowerCase().endsWith('.json'),
-      )
+      const accepted = Array.from(fileList).filter((f) => f.name.toLowerCase().endsWith('.zip'))
       if (accepted.length === 0) {
-        setPhase({ status: 'error', message: 'Please choose the Spotify .zip or its .json files.' })
+        setPhase({ status: 'error', message: 'Choose the original ZIP from your music service.' })
         return
       }
 
@@ -63,14 +68,14 @@ export function UploadDropzone({
         }
 
         worker.postMessage(
-          { files },
+          { files, source },
           files.map((f) => f.buffer),
         )
       } catch {
         setPhase({ status: 'error', message: 'Could not read that file.' })
       }
     },
-    [onReady],
+    [onReady, source],
   )
 
   const working = phase.status === 'working'
@@ -97,7 +102,7 @@ export function UploadDropzone({
         <input
           ref={inputRef}
           type="file"
-          accept=".zip,.json,application/zip,application/json"
+          accept=".zip,application/zip"
           multiple
           className="sr-only"
           disabled={working}
@@ -123,10 +128,9 @@ export function UploadDropzone({
               <UploadCloud className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <p className="text-lg font-semibold">Drop your Spotify data here</p>
+              <p className="text-lg font-semibold">Drop your {source === 'youtube' ? 'YouTube Music' : source === 'apple' ? 'Apple Music' : 'Spotify'} ZIP here</p>
               <p className="text-sm text-muted-foreground">
-                The <span className="font-mono text-xs">my_spotify_data.zip</span> from your account
-                export — or the JSON files inside it
+                Keep the archive intact — the history files inside are found automatically
               </p>
             </div>
             <Button type="button" size="lg" onClick={() => inputRef.current?.click()}>

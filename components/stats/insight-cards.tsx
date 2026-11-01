@@ -286,10 +286,15 @@ export function SessionsCard({
 }) {
   const stats = [
     { label: 'listening sessions', value: formatNumber(sessions.count) },
-    { label: 'average session', value: `${sessions.avgMinutes} min` },
+    ...(sessions.avgMinutes === null
+      ? []
+      : [{ label: 'average session', value: `${sessions.avgMinutes} min` }]),
     { label: 'tracks per session', value: `${sessions.avgTracks}` },
     {
-      label: `longest binge — ${sessions.longestMinutes} min straight`,
+      label:
+        sessions.longestMinutes === null
+          ? 'longest session'
+          : `longest binge — ${sessions.longestMinutes} min straight`,
       value: plural(sessions.longestTracks, 'track'),
     },
   ]

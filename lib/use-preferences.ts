@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 
 function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
@@ -23,14 +23,17 @@ export function useIsMobile() {
 }
 
 /**
- * Whether to render a 3D scene at all: false on mobile or without WebGL,
- * null until mounted (SSR-safe — render nothing while null).
+ * Whether to render a 3D scene at all: false on mobile or without WebGL.
+ * useSyncExternalStore keeps the server snapshot hydration-safe.
  */
-export function useCan3D(): boolean | null {
+export function useCan3D(): boolean {
   const isMobile = useIsMobile()
-  const [webgl, setWebgl] = useState<boolean | null>(null)
-  useEffect(() => setWebgl(hasWebGL()), [])
-  return webgl === null ? null : webgl && !isMobile
+  const webgl = useSyncExternalStore(
+    () => () => {},
+    hasWebGL,
+    () => false,
+  )
+  return webgl && !isMobile
 }
 
 let webglSupport: boolean | null = null

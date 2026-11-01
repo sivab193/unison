@@ -39,7 +39,7 @@ export function YearlyCard({
   const format = readout(unit)
   return (
     <SectionCard
-      title="Minutes by year"
+      title={unit === 'minutes' ? 'Minutes by year' : 'Plays by year'}
       icon={CalendarDays}
       subtitle="Your all-time trend"
       className="h-full"
@@ -80,7 +80,11 @@ export function MonthlyCard({ data, unit }: { data: SeriesPoint[]; unit: Timelin
     <SectionCard
       title="Monthly rhythm"
       icon={Music2}
-      subtitle="Minutes each month across your history"
+      subtitle={
+        unit === 'minutes'
+          ? 'Minutes each month across your history'
+          : 'Music plays each month across your history'
+      }
     >
       <ResponsiveContainer width="100%" height={200}>
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

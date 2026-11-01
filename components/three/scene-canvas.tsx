@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { AdaptiveDpr, Preload } from '@react-three/drei'
 import { useEffect, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { hasWebGL, useIsMobile, useReducedMotion } from '@/lib/use-preferences'
+import { useCan3D, useReducedMotion } from '@/lib/use-preferences'
 
 interface SceneCanvasProps {
   children: ReactNode
@@ -16,13 +16,9 @@ interface SceneCanvasProps {
 
 export function SceneCanvas({ children, className, fallback = null, camera }: SceneCanvasProps) {
   const reducedMotion = useReducedMotion()
-  const isMobile = useIsMobile()
-  // Decide after mount so SSR markup never disagrees with the client
-  const [webgl, setWebgl] = useState<boolean | null>(null)
-  useEffect(() => setWebgl(hasWebGL()), [])
+  const can3D = useCan3D()
 
-  if (webgl === null) return <div className={className} aria-hidden />
-  if (!webgl || isMobile) return <>{fallback}</>
+  if (!can3D) return <>{fallback}</>
 
   return (
     <div className={cn('relative', className)}>

@@ -14,7 +14,7 @@ export function TopArtistsCard({ stats }: { stats: UnifiedStats }) {
     <SectionCard
       title="Top artists"
       icon={Mic2}
-      subtitle={stats.source === 'upload' ? 'By time listened' : 'By how often Spotify ranks them'}
+      subtitle={stats.rankingLabel ?? 'Ranked by listening'}
       className="h-full"
       share={() =>
         rankedSpec(
@@ -54,7 +54,7 @@ export function TopTracksCard({ stats }: { stats: UnifiedStats }) {
     <SectionCard
       title="Top tracks"
       icon={Music2}
-      subtitle={stats.source === 'upload' ? 'By time listened' : 'Your most-played right now'}
+      subtitle={stats.rankingLabel ?? 'Ranked by listening'}
       className="h-full"
       share={() =>
         rankedSpec(
@@ -93,7 +93,7 @@ export function TopAlbumsCard({ stats }: { stats: UnifiedStats }) {
     <SectionCard
       title="Top albums"
       icon={Disc3}
-      subtitle={stats.source === 'upload' ? 'By time listened' : 'Where your top tracks come from'}
+      subtitle={stats.rankingLabel ?? 'Ranked by listening'}
       className="h-full"
       share={() =>
         rankedSpec(

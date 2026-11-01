@@ -1,15 +1,13 @@
-// Every card can be shared as an image. The specs are built from the common
-// view model, so a card shares identically whether the numbers came from the
-// Spotify API or a ZIP export.
+// Every card can be shared as an image from the common local-export view model.
 import type { ShareSpec, ShareRow } from '@/lib/share-card'
 import type { HighlightData, TileData, UnifiedStats } from '@/lib/unified/types'
 
-export const SHARE_TEXT = 'My Spotify, decoded 🎧 → made with Statify'
+export const SHARE_TEXT = 'My music history, unpacked 🎧 → made with Unison'
 
 export function recapSpec(stats: UnifiedStats): ShareSpec {
   return {
     variant: 'story',
-    eyebrow: `My Spotify · ${stats.scopeLabel}`,
+    eyebrow: `My listening · ${stats.scopeLabel}`,
     title: 'The Recap',
     bigValue: `${stats.hero.value}${stats.hero.suffix}`,
     bigCaption: stats.recap.caption,

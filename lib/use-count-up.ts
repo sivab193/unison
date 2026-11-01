@@ -16,13 +16,15 @@ export function useCountUp(target: number, durationMs = 900): number {
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     if (reduce || target === 0) {
-      setValue(target)
-      return
+      frame.current = requestAnimationFrame(() => setValue(target))
+      return () => {
+        if (frame.current) cancelAnimationFrame(frame.current)
+      }
     }
 
     const start = performance.now()
     const tick = (now: number) => {
-      const p = Math.min((now - start) / durationMs, 1)
+      const p = Math.max(0, Math.min((now - start) / durationMs, 1))
       const eased = 1 - Math.pow(1 - p, 3)
       setValue(target * eased)
       if (p < 1) frame.current = requestAnimationFrame(tick)

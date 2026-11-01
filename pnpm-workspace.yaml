@@ -1,7 +1,7 @@
+packages:
+  - .
+
 allowBuilds:
   '@tailwindcss/oxide': true
   sharp: true
-
-# next pins postcss@8.4.31 (< 8.5.10, GHSA XSS advisory); force the patched line
-overrides:
-  postcss: '>=8.5.10'
+  unrs-resolver: true

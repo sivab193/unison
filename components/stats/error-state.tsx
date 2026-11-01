@@ -11,7 +11,7 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Couldn&apos;t load your stats</h2>
         <p className="text-sm text-muted-foreground">
-          Spotify didn&apos;t answer. Give it a moment and try again.
+          The export could not be processed. Return to the upload screen and choose the original ZIP.
         </p>
       </div>
       <Button onClick={onRetry} variant="outline" className="gap-2">

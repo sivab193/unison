@@ -1,9 +1,7 @@
-// One view model for every data source. The Spotify API path (sign-in + demo)
-// and the ZIP-export path answer different questions about the same listening,
-// so each adapter fills what it can and leaves the rest null — the dashboard
-// renders one common set of cards from whatever is present.
+// One view model for every browser-parsed music export. Each adapter fills
+// what its file format knows and leaves unavailable sections null or empty.
 
-export type StatsSource = 'spotify' | 'demo' | 'upload'
+export type StatsSource = 'upload'
 
 export type TileIcon =
   | 'hours'
@@ -176,10 +174,10 @@ export interface LoyaltyData {
 
 export interface SessionData {
   count: number
-  avgMinutes: number
+  avgMinutes: number | null
   avgTracks: number
   longestTracks: number
-  longestMinutes: number
+  longestMinutes: number | null
   caption: string
 }
 
@@ -217,6 +215,8 @@ export interface UnifiedStats {
   source: StatsSource
   /** "Last 6 Months", "All time", "2023–2025" … */
   scopeLabel: string
+  /** Human-readable basis for ranked lists. */
+  rankingLabel?: string
   hero: HeroData
   tiles: TileData[]
   /** Upload path only: the plays came from the basic export, not the extended one */

@@ -1,12 +1,12 @@
 /// <reference lib="webworker" />
-// Runs off the main thread: unzips the Spotify export, parses the audio
-// history JSON, and normalizes it into compact plays. Nothing here touches the
-// network — the user's data never leaves the browser. Aggregation happens on
-// the main thread so filter changes recompute instantly.
+// Reads platform export ZIPs entirely inside a browser worker. No file bytes,
+// track names, or aggregate results leave the device.
 import { unzipSync, strFromU8 } from 'fflate'
 import { normalize } from './aggregate'
+import { parseAppleFiles, type TextExportFile } from './apple'
+import { parseYoutubeFiles } from './youtube'
 import type {
-  HistoryFormat,
+  DataPlatform,
   RawBasicPlay,
   RawPlay,
   WorkerRequest,
@@ -19,86 +19,119 @@ function post(message: WorkerResponse) {
   ctx.postMessage(message)
 }
 
-/** Extended export: Streaming_History_Audio_2019-2020_0.json */
+function baseName(name: string): string {
+  return name.split('/').pop() ?? name
+}
+
 function isExtendedHistory(name: string): boolean {
-  const base = name.split('/').pop() ?? name
-  return /streaming_history_audio.*\.json$/i.test(base)
+  return /streaming_history_audio.*\.json$/i.test(baseName(name))
 }
 
-/**
- * Basic "Account data" export: StreamingHistory_music_0.json, or
- * StreamingHistory0.json on older exports. Podcast files use the same prefix
- * and hold no track plays, so they're excluded.
- */
 function isBasicHistory(name: string): boolean {
-  const base = name.split('/').pop() ?? name
-  if (/podcast/i.test(base)) return false
-  return /^streaminghistory(_music)?_?\d*\.json$/i.test(base)
+  const base = baseName(name)
+  return !/podcast/i.test(base) && /^streaminghistory(_music)?_?\d*\.json$/i.test(base)
 }
 
-function isHistory(name: string): boolean {
-  return isExtendedHistory(name) || isBasicHistory(name)
+function isAppleHistory(name: string): boolean {
+  return /apple music - (play activity|play history daily tracks|recently played tracks).*\.csv$/i.test(
+    baseName(name),
+  )
+}
+
+function isYoutubeHistory(name: string): boolean {
+  const normalized = name.replace(/\\/g, '/')
+  return (
+    /youtube and youtube music/i.test(normalized) &&
+    /^watch-history\.(json|html)$/i.test(baseName(normalized))
+  )
+}
+
+function wanted(name: string, source: DataPlatform): boolean {
+  if (/\.zip$/i.test(name)) return source === 'apple'
+  if (source === 'spotify') return isExtendedHistory(name) || isBasicHistory(name)
+  if (source === 'apple') return isAppleHistory(name)
+  return isYoutubeHistory(name)
+}
+
+function collectZipEntries(
+  bytes: Uint8Array,
+  source: DataPlatform,
+  out: { name: string; bytes: Uint8Array }[],
+  depth = 0,
+) {
+  const entries = unzipSync(bytes, { filter: (entry) => wanted(entry.name, source) })
+  for (const [name, data] of Object.entries(entries)) {
+    if (!data.length) continue
+    if (/\.zip$/i.test(name) && depth < 3) collectZipEntries(data, source, out, depth + 1)
+    else out.push({ name, bytes: data })
+  }
+}
+
+function parseSpotify(entries: { name: string; bytes: Uint8Array }[]) {
+  const extended = entries.filter((entry) => isExtendedHistory(entry.name))
+  const basic = entries.filter((entry) => isBasicHistory(entry.name))
+  const selected = extended.length ? extended : basic
+  if (!selected.length) {
+    throw new Error(
+      'No Spotify streaming history was found. Choose the ZIP containing Streaming_History_Audio_*.json or StreamingHistory_music_*.json.',
+    )
+  }
+
+  const rows: (RawPlay | RawBasicPlay)[] = []
+  for (const entry of selected) {
+    const parsed = JSON.parse(strFromU8(entry.bytes))
+    if (Array.isArray(parsed)) rows.push(...parsed)
+  }
+  return normalize(
+    rows as RawPlay[] | RawBasicPlay[],
+    extended.length ? 'spotify-extended' : 'spotify-basic',
+  )
+}
+
+function toTextFiles(entries: { name: string; bytes: Uint8Array }[]): TextExportFile[] {
+  return entries.map((entry) => ({ name: entry.name, text: strFromU8(entry.bytes) }))
 }
 
 ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
   try {
-    const { files } = event.data
-    const extended: string[] = []
-    const basic: string[] = []
+    const { files, source } = event.data
+    const entries: { name: string; bytes: Uint8Array }[] = []
 
-    files.forEach((file, i) => {
-      const bytes = new Uint8Array(file.buffer)
-      if (file.name.toLowerCase().endsWith('.zip')) {
-        post({ type: 'progress', stage: 'Unzipping export…', percent: 10 })
-        const entries = unzipSync(bytes, { filter: (f) => isHistory(f.name) })
-        for (const [name, data] of Object.entries(entries)) {
-          if (!data.length) continue
-          ;(isExtendedHistory(name) ? extended : basic).push(strFromU8(data))
-        }
-      } else if (isHistory(file.name)) {
-        ;(isExtendedHistory(file.name) ? extended : basic).push(strFromU8(bytes))
-      }
+    files.forEach((file, index) => {
+      post({ type: 'progress', stage: 'Opening your export…', percent: 10 })
+      collectZipEntries(new Uint8Array(file.buffer), source, entries)
       post({
         type: 'progress',
-        stage: 'Reading files…',
-        percent: 20 + Math.round(((i + 1) / files.length) * 30),
+        stage: 'Finding listening history…',
+        percent: 20 + Math.round(((index + 1) / files.length) * 30),
       })
     })
 
-    if (extended.length === 0 && basic.length === 0) {
-      post({
-        type: 'error',
-        message:
-          'No streaming history found in that file. Make sure it’s the ZIP Spotify emailed you — the one containing Streaming_History_Audio_*.json or StreamingHistory_music_*.json.',
-      })
-      return
-    }
-
-    // Prefer the extended files when an export somehow carries both — they hold
-    // the full history plus the context the basic ones drop.
-    const format: HistoryFormat = extended.length ? 'extended' : 'basic'
-    const jsonBlobs = extended.length ? extended : basic
-
     post({ type: 'progress', stage: 'Parsing plays…', percent: 60 })
-    const rows: (RawPlay | RawBasicPlay)[] = []
-    for (const blob of jsonBlobs) {
-      const parsed = JSON.parse(blob)
-      if (Array.isArray(parsed)) rows.push(...parsed)
-    }
+    const result =
+      source === 'spotify'
+        ? parseSpotify(entries)
+        : source === 'apple'
+          ? parseAppleFiles(toTextFiles(entries))
+          : parseYoutubeFiles(toTextFiles(entries))
 
-    post({ type: 'progress', stage: 'Crunching numbers…', percent: 85 })
-    const { plays, meta } = normalize(rows as RawPlay[] | RawBasicPlay[], format)
-
-    if (plays.length === 0) {
-      post({ type: 'error', message: 'No music plays found in that export.' })
+    if (!result.plays.length) {
+      const message =
+        source === 'youtube'
+          ? 'No YouTube Music plays were found. Use the Google Takeout ZIP containing YouTube and YouTube Music watch history.'
+          : source === 'apple'
+            ? 'No Apple Music plays were found in that export.'
+            : 'No music plays were found in that Spotify export.'
+      post({ type: 'error', message })
       return
     }
 
-    post({ type: 'done', plays, meta })
-  } catch (err) {
+    post({ type: 'progress', stage: 'Crunching your listening…', percent: 88 })
+    post({ type: 'done', ...result })
+  } catch (error) {
     post({
       type: 'error',
-      message: err instanceof Error ? err.message : 'Could not read that file.',
+      message: error instanceof Error ? error.message : 'Could not read that export ZIP.',
     })
   }
 }

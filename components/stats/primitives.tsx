@@ -60,7 +60,7 @@ export function Reveal({
 }) {
   return (
     <div
-      className={`animate-fade-slide-up opacity-0 ${className ?? ''}`}
+      className={`min-w-0 animate-fade-slide-up opacity-0 ${className ?? ''}`}
       style={{ animationDelay: `${delay}s` }}
     >
       {children}
@@ -97,7 +97,7 @@ export function SectionCard({
           <ShareButton
             spec={share}
             text={SHARE_TEXT}
-            filename={`statify-${title.toLowerCase().replace(/\s+/g, '-')}.png`}
+            filename={`unison-${title.toLowerCase().replace(/\s+/g, '-')}.png`}
           />
         )}
       </div>
@@ -118,7 +118,7 @@ export function Tile({ tile, share }: { tile: TileData; share: () => ShareSpec }
           <Icon className="h-4 w-4 shrink-0 text-primary" />
           <span className="text-xs font-medium uppercase tracking-wide">{tile.label}</span>
         </div>
-        <ShareButton spec={share} text={SHARE_TEXT} filename={`statify-${tile.key}.png`} />
+        <ShareButton spec={share} text={SHARE_TEXT} filename={`unison-${tile.key}.png`} />
       </div>
       {tile.countTo === null ? (
         <p className="text-2xl font-semibold capitalize leading-tight">{tile.value}</p>
@@ -151,7 +151,7 @@ export function Highlight({
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
           <Icon className="h-5 w-5" />
         </div>
-        <ShareButton spec={share} text={SHARE_TEXT} filename={`statify-${highlight.key}.png`} />
+        <ShareButton spec={share} text={SHARE_TEXT} filename={`unison-${highlight.key}.png`} />
       </div>
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
         {highlight.eyebrow}
@@ -216,7 +216,7 @@ export function RankedList({ items, rounded }: { items: RankedItem[]; rounded?: 
               <div className="min-w-0 flex-1">{label}</div>
             )}
             {item.share && (
-              <ShareButton spec={item.share} text={SHARE_TEXT} filename="statify-pick.png" />
+              <ShareButton spec={item.share} text={SHARE_TEXT} filename="unison-pick.png" />
             )}
             <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
               {item.value}

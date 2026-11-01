@@ -132,13 +132,19 @@ export default function AlbumWall() {
   const can3D = useCan3D()
   const albums = stats?.albums
   const covers = useMemo(() => (albums ?? []).slice(0, COVER_COUNT), [albums])
-  const [focusIndex, setFocusIndex] = useState(0)
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  const matchedIndex = covers.findIndex((cover) => cover.key === focusKey)
+  const focusIndex = matchedIndex < 0 ? 0 : matchedIndex
+  const setFocusIndex = useCallback(
+    (index: number) => setFocusKey(covers[index]?.key ?? null),
+    [covers],
+  )
 
   const move = useCallback(
     (delta: number) => {
-      setFocusIndex((i) => Math.min(Math.max(i + delta, 0), covers.length - 1))
+      setFocusIndex(Math.min(Math.max(focusIndex + delta, 0), covers.length - 1))
     },
-    [covers.length],
+    [covers.length, focusIndex, setFocusIndex],
   )
 
   useEffect(() => {
@@ -150,13 +156,8 @@ export default function AlbumWall() {
     return () => window.removeEventListener('keydown', onKey)
   }, [move])
 
-  useEffect(() => {
-    // Reset when a scope change swaps the album list
-    setFocusIndex(0)
-  }, [covers])
-
   if (!can3D || covers.length === 0) return null
-  const focused = covers[Math.min(focusIndex, covers.length - 1)]
+  const focused = covers[focusIndex]
 
   return (
     <Card className="space-y-4 p-6">

@@ -1,7 +1,5 @@
-// Types for the "upload your Spotify data" path. These describe the raw
-// Extended Streaming History records Spotify ships in the account export, the
-// compact per-play shape we keep in memory for re-filtering, and the
-// aggregated stats we compute from them entirely in the browser.
+// Types for the local-export path. Spotify, Apple Music, and YouTube Music
+// files all normalize to the same compact Play shape in a browser worker.
 
 /**
  * Which of Spotify's two exports the plays came from. "Extended streaming
@@ -9,7 +7,15 @@
  * box carries roughly a year with only four fields per row, so the sections
  * that need album, device, country or shuffle can't be built from it.
  */
-export type HistoryFormat = 'extended' | 'basic'
+export type DataPlatform = 'spotify' | 'apple' | 'youtube'
+
+export type HistoryFormat =
+  | 'spotify-extended'
+  | 'spotify-basic'
+  | 'apple-activity'
+  | 'apple-daily'
+  | 'apple-recent'
+  | 'youtube'
 
 /** One row from a Streaming_History_Audio_*.json file (extended export). */
 export interface RawPlay {
@@ -52,7 +58,8 @@ export interface Play {
   day: string // YYYY-MM-DD
   hour: number // 0–23, viewer-local
   dow: number // 0=Sun … 6=Sat
-  ms: number
+  /** YouTube Takeout does not record watch duration. */
+  ms: number | null
   uri: string
   track: string
   artist: string
@@ -76,11 +83,14 @@ export interface PlayFilters {
 export const ALL_FILTERS: PlayFilters = { years: null, platforms: null, excludeSkips: false }
 
 export interface ParseMeta {
+  source: DataPlatform
   years: number[]
   /** Empty on the basic export, which records no device */
   platforms: string[]
   totalPlays: number
   format: HistoryFormat
+  durationKnown: boolean
+  approximateTimes: boolean
 }
 
 export interface TrackAgg {
@@ -190,7 +200,8 @@ export interface RideOrDie {
 export interface LocalStats {
   generatedAt: string
   totalPlays: number
-  totalMs: number
+  /** null when the export records plays but not listening duration. */
+  totalMs: number | null
   distinctTracks: number
   distinctArtists: number
   firstPlay: string | null
@@ -238,6 +249,7 @@ export interface LocalStats {
 
 export type WorkerRequest = {
   files: { name: string; buffer: ArrayBuffer }[]
+  source: DataPlatform
 }
 
 export type WorkerResponse =

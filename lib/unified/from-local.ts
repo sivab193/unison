@@ -1,6 +1,5 @@
-// Adapter: Spotify ZIP export (full streaming history) → the common view model.
-// The export knows exactly how long you listened and when, but nothing about
-// genres, popularity or artwork — those sections come back null.
+// Adapter: browser-parsed music exports → the common view model. Export files
+// do not include genres, popularity, or artwork, so those sections stay null.
 import {
   formatDay,
   formatMinutes,
@@ -12,7 +11,7 @@ import {
   plural,
   WEEKDAY_LABELS,
 } from '@/lib/format'
-import type { HistoryFormat, LocalStats } from '@/lib/streaming-history/types'
+import type { LocalStats, ParseMeta } from '@/lib/streaming-history/types'
 import type {
   EvolutionColumn,
   EvolutionEntry,
@@ -52,7 +51,8 @@ function repeatPersona(rate: number): string {
   return 'Serial Explorer'
 }
 
-function buildTiles(stats: LocalStats, format: HistoryFormat): TileData[] {
+function buildTiles(stats: LocalStats, meta: ParseMeta): TileData[] {
+  const hasDuration = stats.totalMs !== null
   const weekendShare =
     stats.weekdayMinutes + stats.weekendMinutes
       ? stats.weekendMinutes / (stats.weekdayMinutes + stats.weekendMinutes)
@@ -64,7 +64,7 @@ function buildTiles(stats: LocalStats, format: HistoryFormat): TileData[] {
     ? Math.round((1 - stats.distinctTracks / stats.totalPlays) * 100)
     : 0
   const shuffleOrRepeat: TileData =
-    format === 'basic'
+    meta.format === 'spotify-basic' || !hasDuration
       ? {
           key: 'repeat',
           icon: 'shuffle',
@@ -87,16 +87,27 @@ function buildTiles(stats: LocalStats, format: HistoryFormat): TileData[] {
         }
 
   return [
-    {
-      key: 'hours',
-      icon: 'hours',
-      label: 'Hours',
-      value: Math.round(stats.totalMs / 3_600_000).toLocaleString(),
-      countTo: stats.totalMs / 3_600_000,
-      decimals: 0,
-      suffix: '',
-      hint: `${formatNumber(stats.totalPlays)} plays`,
-    },
+    hasDuration
+      ? {
+          key: 'hours',
+          icon: 'hours',
+          label: 'Hours',
+          value: Math.round(stats.totalMs! / 3_600_000).toLocaleString(),
+          countTo: stats.totalMs! / 3_600_000,
+          decimals: 0,
+          suffix: '',
+          hint: `${formatNumber(stats.totalPlays)} plays`,
+        }
+      : {
+          key: 'plays',
+          icon: 'hours',
+          label: 'Plays',
+          value: formatNumber(stats.totalPlays),
+          countTo: stats.totalPlays,
+          decimals: 0,
+          suffix: '',
+          hint: 'Takeout does not record duration',
+        },
     {
       key: 'artists',
       icon: 'artists',
@@ -121,22 +132,33 @@ function buildTiles(stats: LocalStats, format: HistoryFormat): TileData[] {
       key: 'per-day',
       icon: 'calendar',
       label: 'Avg / day',
-      value: `${stats.avgMinutesPerDay}m`,
+      value: hasDuration ? `${stats.avgMinutesPerDay}m` : formatNumber(stats.avgMinutesPerDay),
       countTo: stats.avgMinutesPerDay,
       decimals: 0,
-      suffix: 'm',
+      suffix: hasDuration ? 'm' : '',
       hint: `over ${formatNumber(stats.daysListened)} active days`,
     },
-    {
-      key: 'skip',
-      icon: 'skip',
-      label: 'Skip rate',
-      value: formatPercent(stats.skipRate),
-      countTo: null,
-      decimals: 0,
-      suffix: '',
-      hint: 'under 30s or skipped',
-    },
+    hasDuration
+      ? {
+          key: 'skip',
+          icon: 'skip',
+          label: 'Skip rate',
+          value: formatPercent(stats.skipRate),
+          countTo: null,
+          decimals: 0,
+          suffix: '',
+          hint: 'under 30s or skipped',
+        }
+      : {
+          key: 'days',
+          icon: 'calendar',
+          label: 'Active days',
+          value: formatNumber(stats.daysListened),
+          countTo: stats.daysListened,
+          decimals: 0,
+          suffix: '',
+          hint: 'days with a music play',
+        },
     shuffleOrRepeat,
     {
       key: 'peak',
@@ -162,6 +184,7 @@ function buildTiles(stats: LocalStats, format: HistoryFormat): TileData[] {
 }
 
 function buildRecap(stats: LocalStats): RecapData {
+  const hasDuration = stats.totalMs !== null
   return {
     caption: `${formatNumber(stats.totalPlays)} plays · ${formatNumber(
       stats.distinctArtists,
@@ -169,7 +192,10 @@ function buildRecap(stats: LocalStats): RecapData {
     stats: [
       { label: 'Top track', value: stats.topTracks[0]?.name ?? '—' },
       { label: 'Peak hour', value: hourLabel(stats.peakHour) },
-      { label: 'Skip rate', value: formatPercent(stats.skipRate) },
+      {
+        label: hasDuration ? 'Skip rate' : 'Active days',
+        value: hasDuration ? formatPercent(stats.skipRate) : formatNumber(stats.daysListened),
+      },
       { label: 'Day streak', value: `${stats.streak?.days ?? 0} days` },
     ],
   }
@@ -208,13 +234,17 @@ function buildHighlights(stats: LocalStats): HighlightData[] {
     })
   }
   if (stats.recordDay) {
+    const recordValue =
+      stats.totalMs === null
+        ? plural(stats.recordDay.minutes, 'play')
+        : formatMinutes(stats.recordDay.minutes)
     out.push({
       key: 'record-day',
       icon: 'trophy',
       eyebrow: 'Record day',
-      title: formatMinutes(stats.recordDay.minutes),
+      title: recordValue,
       subtitle: `Your all-in day — ${formatDay(stats.recordDay.date)}`,
-      shareValue: formatMinutes(stats.recordDay.minutes),
+      shareValue: recordValue,
       shareCaption: `in one day · ${formatDay(stats.recordDay.date)}`,
     })
   }
@@ -300,11 +330,12 @@ function buildEvolution(stats: LocalStats): UnifiedStats['evolution'] {
 export function fromLocalStats(
   stats: LocalStats,
   scopeLabel: string,
-  format: HistoryFormat = 'extended',
+  meta: ParseMeta,
 ): UnifiedStats {
-  const isBasic = format === 'basic'
+  const isBasic = meta.format === 'spotify-basic'
+  const hasDuration = stats.totalMs !== null
   const eras = eraClusters(stats)
-  const totalMinutes = stats.totalMs / 60_000
+  const totalMeasure = hasDuration ? stats.totalMs! / 60_000 : stats.totalPlays
 
   const artists: UnifiedArtist[] = stats.topArtists.map((a, i) => ({
     key: a.name,
@@ -314,13 +345,13 @@ export function fromLocalStats(
     genres: [],
     followers: null,
     popularity: null,
-    minutes: Math.round(a.ms / 60_000),
+    minutes: hasDuration ? Math.round(a.ms / 60_000) : null,
     plays: a.plays,
     distinctTracks: a.distinctTracks,
     firstYear: a.firstYear,
     rank: i + 1,
     cluster: eras.get(a.firstYear) ?? 'earlier',
-    value: formatMinutes(a.ms / 60_000),
+    value: hasDuration ? formatMinutes(a.ms / 60_000) : plural(a.plays, 'play'),
     detail: `${formatNumber(a.plays)} plays · ${plural(a.distinctTracks, 'track')}`,
   }))
 
@@ -337,12 +368,15 @@ export function fromLocalStats(
   return {
     source: 'upload',
     scopeLabel,
+    rankingLabel: hasDuration ? 'By listening time' : 'By play count',
 
     hero: {
       eyebrow: `Your listening · ${scopeLabel}`,
-      countTo: stats.totalMs / 3_600_000,
-      value: Math.round(stats.totalMs / 3_600_000).toLocaleString(),
-      suffix: ' hrs',
+      countTo: hasDuration ? stats.totalMs! / 3_600_000 : stats.totalPlays,
+      value: hasDuration
+        ? Math.round(stats.totalMs! / 3_600_000).toLocaleString()
+        : formatNumber(stats.totalPlays),
+      suffix: hasDuration ? ' hrs' : ' plays',
       caption:
         stats.firstPlay && stats.lastPlay
           ? `${formatDay(stats.firstPlay)} → ${formatDay(stats.lastPlay)} · ${formatNumber(
@@ -351,7 +385,7 @@ export function fromLocalStats(
           : `${formatNumber(stats.totalPlays)} plays`,
     },
 
-    tiles: buildTiles(stats, format),
+    tiles: buildTiles(stats, meta),
     basicExport: isBasic,
     recap: buildRecap(stats),
     highlights: buildHighlights(stats),
@@ -368,13 +402,13 @@ export function fromLocalStats(
         : null,
       releaseYear: null,
       rank: i + 1,
-      value: formatMinutes(t.ms / 60_000),
+      value: hasDuration ? formatMinutes(t.ms / 60_000) : plural(t.plays, 'play'),
       detail: `${t.artist} · ${formatNumber(t.plays)} plays`,
     })),
 
     // The basic export has no album field, so every row would collapse into one
     // nameless album — better to drop the section entirely.
-    albums: isBasic
+    albums: isBasic || meta.source === 'youtube'
       ? []
       : stats.topAlbums.map((a, i) => ({
           key: `${a.name}|${a.artist}`,
@@ -383,7 +417,7 @@ export function fromLocalStats(
           imageUrl: null,
           url: null,
           rank: i + 1,
-          value: formatMinutes(a.ms / 60_000),
+          value: hasDuration ? formatMinutes(a.ms / 60_000) : plural(a.plays, 'play'),
           detail: a.artist,
         })),
 
@@ -391,20 +425,29 @@ export function fromLocalStats(
 
     clock: {
       bins: stats.clock.map((b) => ({ hour: b.hour, value: b.minutes })),
-      unit: 'minutes',
+      unit: hasDuration ? 'minutes' : 'plays',
       peakHour: stats.peakHour,
       persona: stats.peakHourPersona,
-      caption: 'Minutes across a 24-hour dial, in your timezone',
+      caption: hasDuration
+        ? 'Minutes across a 24-hour dial, in your timezone'
+        : 'Music plays across a 24-hour dial, from your Takeout timestamps',
     },
 
     era: null,
 
     dna: {
       title: 'Artist DNA',
-      caption: 'Share of your listening time by artist',
+      caption: hasDuration
+        ? 'Share of your listening time by artist'
+        : 'Share of your music plays by artist',
       items: artists.slice(0, 8).map((a) => ({
         name: a.name,
-        share: totalMinutes ? (a.minutes ?? 0) / totalMinutes : 0,
+        share: totalMeasure
+          ? (hasDuration
+              ? (a.minutes ?? 0) / totalMeasure
+              : (stats.topArtists.find((artist) => artist.name === a.name)?.plays ?? 0) /
+                totalMeasure)
+          : 0,
       })),
       diversity: stats.artistDiversity,
       persona: artistDiversityPersona(stats.artistDiversity),
@@ -442,11 +485,13 @@ export function fromLocalStats(
     sessions: stats.sessions
       ? {
           count: stats.sessions.count,
-          avgMinutes: stats.sessions.avgMinutes,
+          avgMinutes: hasDuration ? stats.sessions.avgMinutes : null,
           avgTracks: stats.sessions.avgTracks,
           longestTracks: stats.sessions.longestTracks,
-          longestMinutes: stats.sessions.longestMinutes,
-          caption: 'Every stretch of listening with less than 30 minutes of silence',
+          longestMinutes: hasDuration ? stats.sessions.longestMinutes : null,
+          caption: hasDuration
+            ? 'Every stretch of listening with less than 30 minutes of silence'
+            : 'Sessions grouped when music plays are less than 30 minutes apart',
         }
       : null,
 
@@ -462,7 +507,7 @@ export function fromLocalStats(
             genres: [],
             followers: null,
             popularity: null,
-            minutes: Math.round(artist.ms / 60_000),
+            minutes: hasDuration ? Math.round(artist.ms / 60_000) : null,
             plays: artist.plays,
             distinctTracks: artist.distinctTracks,
             firstYear: artist.firstYear,
@@ -475,7 +520,7 @@ export function fromLocalStats(
       : null,
 
     timeline: {
-      unit: 'minutes',
+      unit: hasDuration ? 'minutes' : 'plays',
       byYear: stats.byYear.map((y) => ({ label: `${y.year}`, value: y.minutes })),
       byMonth: stats.byMonth.map((m) => ({ label: m.month, value: m.minutes })),
       weekday: stats.weekday.map((d) => ({ label: WEEKDAY_LABELS[d.day], value: d.minutes })),
@@ -484,7 +529,7 @@ export function fromLocalStats(
       topArtistPerYear: stats.topArtistPerYear.map((a) => ({
         year: a.year,
         artist: a.artist,
-        detail: `${minutesToHours(a.minutes)}h`,
+        detail: hasDuration ? `${minutesToHours(a.minutes)}h` : plural(a.plays, 'play'),
       })),
       weekdayCaption: 'When you press play, across your whole history',
     },
@@ -493,17 +538,22 @@ export function fromLocalStats(
       platforms: stats.platforms.map((p) => ({
         label: p.label,
         value: p.minutes,
-        display: formatMinutes(p.minutes),
+        display: hasDuration ? formatMinutes(p.minutes) : plural(p.plays, 'play'),
       })),
       countries: stats.countries.map((c) => ({
         label: c.label,
         value: c.minutes,
-        display: formatMinutes(c.minutes),
+        display: hasDuration ? formatMinutes(c.minutes) : plural(c.plays, 'play'),
       })),
     },
 
-    footnote: isBasic
-      ? 'Computed locally from your account-data export · nothing left your browser.'
-      : 'Computed locally from your export · nothing left your browser.',
+    footnote:
+      meta.source === 'youtube'
+        ? 'Computed locally from your YouTube Takeout · music plays only · Takeout records no listening duration · nothing left your browser.'
+        : meta.source === 'apple'
+          ? `Computed locally from your Apple Music export${meta.approximateTimes ? ' · daily totals use approximate times' : ''} · nothing left your browser.`
+          : isBasic
+            ? 'Computed locally from your Spotify account-data export · nothing left your browser.'
+            : 'Computed locally from your Spotify export · nothing left your browser.',
   }
 }

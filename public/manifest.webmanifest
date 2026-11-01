@@ -1,7 +1,7 @@
 {
-  "name": "Statify — Your Spotify, Visualized",
-  "short_name": "Statify",
-  "description": "Explore your Spotify listening in 3D and share an all-time recap from your data export.",
+  "name": "Unison — Your Listening, Unpacked",
+  "short_name": "Unison",
+  "description": "Explore your music history from a private, browser-processed export ZIP.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0f0d",

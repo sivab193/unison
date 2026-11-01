@@ -121,11 +121,11 @@ function brandFooter(ctx: CanvasRenderingContext2D, h: number) {
   ctx.textAlign = 'left'
   ctx.font = `800 30px ${FONT}`
   ctx.fillStyle = GREEN
-  ctx.fillText('◆ STATIFY', 48, h - 52)
+  ctx.fillText('◆ UNISON', 48, h - 52)
   ctx.textAlign = 'right'
   ctx.font = `600 26px ${FONT}`
   ctx.fillStyle = MUTED
-  ctx.fillText('sst.siv19.dev', W - 48, h - 52)
+  ctx.fillText('music.siv19.dev', W - 48, h - 52)
   ctx.textAlign = 'left'
 }
 
