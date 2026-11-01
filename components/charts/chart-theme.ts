@@ -1,18 +1,18 @@
-// Shared chart tokens. Single-series charts use the brand green; the genre
+// Shared chart tokens. Single-series charts use the Unison accent; the genre
 // galaxy's cluster palette below is categorical and was validated with the
 // dataviz six-checks (all-pairs CVD ΔE 25.5 on the dark card surface).
 export const chart = {
-  /** brand green — the one hue for single-series marks */
+  /** brand accent — the one hue for single-series marks */
   accent: 'var(--color-primary)',
   accentDim: 'color-mix(in oklch, var(--color-primary) 35%, transparent)',
   grid: 'var(--color-border)',
   axis: 'var(--color-muted-foreground)',
-  deemphasis: 'oklch(0.35 0.01 106)',
+  deemphasis: 'oklch(0.35 0.02 275)',
 }
 
 /** Fixed genre→color order; assigned in sequence, never cycled. */
-export const GENRE_COLORS = ['#6aa36c', '#348dcf', '#c0851f', '#9b5472', '#9e4421']
-export const GENRE_OTHER_COLOR = '#5c5b57'
+export const GENRE_COLORS = ['#8b8cf8', '#58b5d8', '#d4a64e', '#c66b96', '#d6725e']
+export const GENRE_OTHER_COLOR = '#676879'
 
 export const tooltipStyle = {
   backgroundColor: 'var(--color-popover)',

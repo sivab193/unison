@@ -25,10 +25,10 @@ export interface ShareSpec {
   stats?: ShareStat[]
 }
 
-const GREEN = '#1db954'
-const GREEN_LIGHT = '#4dd07a'
-const INK = '#f3f5f4'
-const MUTED = '#8b968f'
+const ACCENT = '#8b8cf8'
+const ACCENT_LIGHT = '#b7b8ff'
+const INK = '#f4f4f8'
+const MUTED = '#9b9db2'
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
 const W = 1080
@@ -75,22 +75,22 @@ function fitFont(
 
 function background(ctx: CanvasRenderingContext2D, h: number) {
   const base = ctx.createLinearGradient(0, 0, W, h)
-  base.addColorStop(0, '#0a0f0d')
-  base.addColorStop(1, '#05100b')
+  base.addColorStop(0, '#0a0a12')
+  base.addColorStop(1, '#11111c')
   ctx.fillStyle = base
   ctx.fillRect(0, 0, W, h)
 
-  // Green aurora glow, top-left
+  // Unison aurora glow, top-left
   const glow = ctx.createRadialGradient(210, 150, 40, 210, 150, 720)
-  glow.addColorStop(0, 'rgba(29,185,84,0.34)')
-  glow.addColorStop(1, 'rgba(29,185,84,0)')
+  glow.addColorStop(0, 'rgba(139,140,248,0.32)')
+  glow.addColorStop(1, 'rgba(139,140,248,0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, W, h)
 
   // Cool counter-glow, bottom-right
   const glow2 = ctx.createRadialGradient(W - 120, h - 160, 40, W - 120, h - 160, 640)
-  glow2.addColorStop(0, 'rgba(58,107,208,0.20)')
-  glow2.addColorStop(1, 'rgba(58,107,208,0)')
+  glow2.addColorStop(0, 'rgba(94,197,255,0.18)')
+  glow2.addColorStop(1, 'rgba(94,197,255,0)')
   ctx.fillStyle = glow2
   ctx.fillRect(0, 0, W, h)
 
@@ -111,7 +111,7 @@ function equalizer(ctx: CanvasRenderingContext2D, y: number) {
   const bw = (W - 96 - gap * (bars - 1)) / bars
   for (let i = 0; i < bars; i++) {
     const h = 14 + (Math.sin(i * 0.9) * 0.5 + 0.5) * 74
-    ctx.fillStyle = i % 3 === 0 ? GREEN : 'rgba(29,185,84,0.35)'
+    ctx.fillStyle = i % 3 === 0 ? ACCENT : 'rgba(139,140,248,0.35)'
     roundRect(ctx, 48 + i * (bw + gap), y - h, bw, h, bw / 2)
     ctx.fill()
   }
@@ -120,7 +120,7 @@ function equalizer(ctx: CanvasRenderingContext2D, y: number) {
 function brandFooter(ctx: CanvasRenderingContext2D, h: number) {
   ctx.textAlign = 'left'
   ctx.font = `800 30px ${FONT}`
-  ctx.fillStyle = GREEN
+  ctx.fillStyle = ACCENT
   ctx.fillText('◆ UNISON', 48, h - 52)
   ctx.textAlign = 'right'
   ctx.font = `600 26px ${FONT}`
@@ -131,7 +131,7 @@ function brandFooter(ctx: CanvasRenderingContext2D, h: number) {
 
 function drawEyebrow(ctx: CanvasRenderingContext2D, text: string, y: number) {
   ctx.font = `700 30px ${FONT}`
-  ctx.fillStyle = GREEN_LIGHT
+  ctx.fillStyle = ACCENT_LIGHT
   ctx.textAlign = 'left'
   ctx.fillText(text.toUpperCase(), 48, y)
 }
@@ -154,7 +154,7 @@ function drawRows(ctx: CanvasRenderingContext2D, rows: ShareRow[], top: number, 
     let x = 76
     if (row.rank !== undefined) {
       ctx.font = `800 40px ${FONT}`
-      ctx.fillStyle = GREEN
+      ctx.fillStyle = ACCENT
       ctx.textAlign = 'left'
       ctx.fillText(`${row.rank}`, x, y + (rowH - 16) / 2 + 14)
       x += 62
@@ -162,7 +162,7 @@ function drawRows(ctx: CanvasRenderingContext2D, rows: ShareRow[], top: number, 
 
     ctx.textAlign = 'right'
     ctx.font = `800 38px ${FONT}`
-    ctx.fillStyle = GREEN_LIGHT
+    ctx.fillStyle = ACCENT_LIGHT
     const valW = ctx.measureText(row.value).width
     ctx.fillText(row.value, W - 76, y + (rowH - 16) / 2 + (row.secondary ? -2 : 14))
 
@@ -230,8 +230,8 @@ export function renderCard(spec: ShareSpec): HTMLCanvasElement {
     const px = fitFont(ctx, spec.bigValue, W - 96, 220, 800)
     ctx.font = `800 ${px}px ${FONT}`
     const grad = ctx.createLinearGradient(48, y, 48, y + px)
-    grad.addColorStop(0, GREEN_LIGHT)
-    grad.addColorStop(1, GREEN)
+    grad.addColorStop(0, ACCENT_LIGHT)
+    grad.addColorStop(1, ACCENT)
     ctx.fillStyle = grad
     ctx.textAlign = 'left'
     const baseline = y + px * 0.8
@@ -293,7 +293,10 @@ export async function shareCard(
   }
   if (nav.canShare?.({ files: [file] }) && nav.share) {
     try {
-      await nav.share({ files: [file], text: opts.text })
+      // Share only the file. macOS's share-sheet Copy action duplicates the
+      // image for some targets (notably WhatsApp) when file + text clipboard
+      // representations are supplied together.
+      await nav.share({ files: [file] })
       return 'shared'
     } catch (err) {
       // User cancelled the sheet — don't fall through to a download.

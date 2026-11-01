@@ -52,7 +52,7 @@ const SOURCES: Record<DataPlatform, SourceGuide> = {
     icon: Youtube,
     href: 'https://takeout.google.com/',
     linkLabel: 'Google Takeout',
-    timing: 'Google usually prepares Takeout archives within hours, depending on archive size.',
+    timing: 'This Takeout was ready in about 3 minutes. Larger Google archives can take longer.',
     steps: [
       'In Google Takeout, deselect everything, then choose YouTube and YouTube Music.',
       'Keep History selected. HTML and JSON watch-history formats are both supported.',
@@ -88,8 +88,8 @@ export default function UploadPage() {
             Your listening, <span className="text-primary">unpacked</span>
           </h1>
           <p className="mx-auto max-w-xl text-pretty leading-relaxed text-muted-foreground">
-            Choose your music service and drop its export ZIP. Every play is parsed, filtered, and
-            visualized on this device—there is no login and no music API.
+            Choose your music service and drop one or more export ZIPs. Unison combines their
+            history on this device—there is no login and no music API.
           </p>
         </div>
 

@@ -128,13 +128,13 @@ export function UploadDropzone({
               <UploadCloud className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <p className="text-lg font-semibold">Drop your {source === 'youtube' ? 'YouTube Music' : source === 'apple' ? 'Apple Music' : 'Spotify'} ZIP here</p>
+              <p className="text-lg font-semibold">Drop your {source === 'youtube' ? 'YouTube Music' : source === 'apple' ? 'Apple Music' : 'Spotify'} ZIPs here</p>
               <p className="text-sm text-muted-foreground">
-                Keep the archive intact — the history files inside are found automatically
+                One or more original archives — overlapping plays are merged automatically
               </p>
             </div>
             <Button type="button" size="lg" onClick={() => inputRef.current?.click()}>
-              Choose file
+              Choose ZIPs
             </Button>
           </>
         )}
@@ -149,7 +149,7 @@ export function UploadDropzone({
 
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-        Parsed entirely in your browser — nothing is uploaded to any server.
+        Combined and parsed entirely in your browser — nothing is uploaded to any server.
       </p>
     </div>
   )

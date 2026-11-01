@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 /**
- * Unison mark — a five-bar sound-wave peak. Self-contained (green gradient
+ * Unison mark — a five-bar sound-wave peak. Self-contained (indigo gradient
  * squircle + white bars) so it reads on any background and scales to a 16px
  * favicon. Matches /public/icon.svg.
  */
@@ -17,8 +17,8 @@ export function LogoMark({ className }: { className?: string }) {
     >
       <defs>
         <linearGradient id="unison-mark-grad" x1="8" y1="6" x2="92" y2="96" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#26E06B" />
-          <stop offset="1" stopColor="#0FA34A" />
+          <stop stopColor="#A9AAFF" />
+          <stop offset="1" stopColor="#6869E8" />
         </linearGradient>
       </defs>
       <rect width="100" height="100" rx="26" fill="url(#unison-mark-grad)" />

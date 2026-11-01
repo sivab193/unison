@@ -2,7 +2,7 @@
 // Reads platform export ZIPs entirely inside a browser worker. No file bytes,
 // track names, or aggregate results leave the device.
 import { unzipSync, strFromU8 } from 'fflate'
-import { normalize } from './aggregate'
+import { dedupePlays, normalize } from './aggregate'
 import { parseAppleFiles, type TextExportFile } from './apple'
 import { parseYoutubeFiles } from './youtube'
 import type {
@@ -115,7 +115,8 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
           ? parseAppleFiles(toTextFiles(entries))
           : parseYoutubeFiles(toTextFiles(entries))
 
-    if (!result.plays.length) {
+    const plays = dedupePlays(result.plays)
+    if (!plays.length) {
       const message =
         source === 'youtube'
           ? 'No YouTube Music plays were found. Use the Google Takeout ZIP containing YouTube and YouTube Music watch history.'
@@ -126,8 +127,16 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
       return
     }
 
-    post({ type: 'progress', stage: 'Crunching your listening…', percent: 88 })
-    post({ type: 'done', ...result })
+    const meta = {
+      ...result.meta,
+      years: [...new Set(plays.map((play) => play.year))].sort((a, b) => a - b),
+      platforms: [...new Set(plays.map((play) => play.platform).filter(Boolean))].sort(),
+      totalPlays: plays.length,
+      durationKnown: plays.some((play) => play.ms !== null),
+    }
+
+    post({ type: 'progress', stage: 'Merging archives and crunching your listening…', percent: 88 })
+    post({ type: 'done', plays, meta })
   } catch (error) {
     post({
       type: 'error',

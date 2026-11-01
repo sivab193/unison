@@ -1,11 +1,11 @@
 <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="statify-grad" x1="8" y1="6" x2="92" y2="96" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#26E06B" />
-      <stop offset="1" stop-color="#0FA34A" />
+    <linearGradient id="unison-grad" x1="8" y1="6" x2="92" y2="96" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A9AAFF" />
+      <stop offset="1" stop-color="#6869E8" />
     </linearGradient>
   </defs>
-  <rect width="100" height="100" rx="26" fill="url(#statify-grad)" />
+  <rect width="100" height="100" rx="26" fill="url(#unison-grad)" />
   <g fill="#ffffff">
     <rect x="15" y="34" width="10" height="32" rx="5" opacity="0.85" />
     <rect x="30" y="22" width="10" height="56" rx="5" opacity="0.95" />

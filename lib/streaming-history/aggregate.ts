@@ -173,6 +173,30 @@ function matches(p: Play, f: PlayFilters): boolean {
   return true
 }
 
+/**
+ * Merge overlapping exports without counting the same recorded event twice.
+ * Separate real plays of the same track remain distinct because their event
+ * timestamps differ; repeated archive snapshots share this full signature.
+ */
+export function dedupePlays(plays: Play[]): Play[] {
+  const seen = new Set<string>()
+  const unique: Play[] = []
+  for (const play of plays) {
+    const signature = [
+      play.t,
+      play.uri,
+      play.ms ?? 'unknown',
+      play.track,
+      play.artist,
+      play.album,
+    ].join('\u001f')
+    if (seen.has(signature)) continue
+    seen.add(signature)
+    unique.push(play)
+  }
+  return unique.sort((a, b) => a.t - b.t)
+}
+
 export function aggregate(
   plays: Play[],
   filters: PlayFilters = { years: null, platforms: null, excludeSkips: false },

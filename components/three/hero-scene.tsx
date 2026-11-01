@@ -22,7 +22,7 @@ function PulsingBlob() {
         <icosahedronGeometry args={[1.7, 48]} />
         <MeshDistortMaterial
           ref={material}
-          color="#1db954"
+          color="#8b8cf8"
           roughness={0.18}
           metalness={0.35}
           distort={0.38}
