@@ -146,6 +146,7 @@ export function parseYoutubeFiles(files: TextExportFile[]): { plays: Play[]; met
     plays,
     meta: {
       source: 'youtube',
+      sources: ['youtube'],
       years,
       platforms: [],
       totalPlays: plays.length,

@@ -83,12 +83,13 @@ export interface PlayFilters {
 export const ALL_FILTERS: PlayFilters = { years: null, platforms: null, excludeSkips: false }
 
 export interface ParseMeta {
-  source: DataPlatform
+  source: DataPlatform | 'multiple'
+  sources: DataPlatform[]
   years: number[]
   /** Empty on the basic export, which records no device */
   platforms: string[]
   totalPlays: number
-  format: HistoryFormat
+  format: HistoryFormat | 'multiple'
   durationKnown: boolean
   approximateTimes: boolean
 }
@@ -248,8 +249,7 @@ export interface LocalStats {
 }
 
 export type WorkerRequest = {
-  files: { name: string; buffer: ArrayBuffer }[]
-  source: DataPlatform
+  files: { name: string; buffer: ArrayBuffer; source: DataPlatform }[]
 }
 
 export type WorkerResponse =

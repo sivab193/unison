@@ -7,6 +7,7 @@ import { parseAppleFiles, type TextExportFile } from './apple'
 import { parseYoutubeFiles } from './youtube'
 import type {
   DataPlatform,
+  ParseMeta,
   RawBasicPlay,
   RawPlay,
   WorkerRequest,
@@ -94,45 +95,52 @@ function toTextFiles(entries: { name: string; bytes: Uint8Array }[]): TextExport
 
 ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
   try {
-    const { files, source } = event.data
-    const entries: { name: string; bytes: Uint8Array }[] = []
+    const { files } = event.data
+    const entriesBySource = new Map<DataPlatform, { name: string; bytes: Uint8Array }[]>()
 
     files.forEach((file, index) => {
-      post({ type: 'progress', stage: 'Opening your export…', percent: 10 })
-      collectZipEntries(new Uint8Array(file.buffer), source, entries)
+      post({
+        type: 'progress',
+        stage: `Opening ${file.name}…`,
+        percent: 10 + Math.round((index / files.length) * 35),
+      })
+      const entries = entriesBySource.get(file.source) ?? []
+      collectZipEntries(new Uint8Array(file.buffer), file.source, entries)
+      entriesBySource.set(file.source, entries)
       post({
         type: 'progress',
         stage: 'Finding listening history…',
-        percent: 20 + Math.round(((index + 1) / files.length) * 30),
+        percent: 10 + Math.round(((index + 1) / files.length) * 40),
       })
     })
 
     post({ type: 'progress', stage: 'Parsing plays…', percent: 60 })
-    const result =
+    const results = [...entriesBySource.entries()].map(([source, entries]) =>
       source === 'spotify'
         ? parseSpotify(entries)
         : source === 'apple'
           ? parseAppleFiles(toTextFiles(entries))
-          : parseYoutubeFiles(toTextFiles(entries))
-
-    const plays = dedupePlays(result.plays)
+          : parseYoutubeFiles(toTextFiles(entries)),
+    )
+    const sources = [...entriesBySource.keys()]
+    const plays = dedupePlays(results.flatMap((result) => result.plays))
     if (!plays.length) {
-      const message =
-        source === 'youtube'
-          ? 'No YouTube Music plays were found. Use the Google Takeout ZIP containing YouTube and YouTube Music watch history.'
-          : source === 'apple'
-            ? 'No Apple Music plays were found in that export.'
-            : 'No music plays were found in that Spotify export.'
-      post({ type: 'error', message })
+      post({ type: 'error', message: 'No music plays were found in the selected exports.' })
       return
     }
 
-    const meta = {
-      ...result.meta,
+    const meta: ParseMeta = {
+      source: sources.length === 1 ? sources[0] : 'multiple',
+      sources,
       years: [...new Set(plays.map((play) => play.year))].sort((a, b) => a - b),
       platforms: [...new Set(plays.map((play) => play.platform).filter(Boolean))].sort(),
       totalPlays: plays.length,
+      format:
+        new Set(results.map((result) => result.meta.format)).size === 1
+          ? results[0].meta.format
+          : 'multiple',
       durationKnown: plays.some((play) => play.ms !== null),
+      approximateTimes: results.some((result) => result.meta.approximateTimes),
     }
 
     post({ type: 'progress', stage: 'Merging archives and crunching your listening…', percent: 88 })

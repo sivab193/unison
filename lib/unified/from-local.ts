@@ -333,6 +333,7 @@ export function fromLocalStats(
   meta: ParseMeta,
 ): UnifiedStats {
   const isBasic = meta.format === 'spotify-basic'
+  const sources = meta.sources
   const hasDuration = stats.totalMs !== null
   const eras = eraClusters(stats)
   const totalMeasure = hasDuration ? stats.totalMs! / 60_000 : stats.totalPlays
@@ -408,7 +409,7 @@ export function fromLocalStats(
 
     // The basic export has no album field, so every row would collapse into one
     // nameless album — better to drop the section entirely.
-    albums: isBasic || meta.source === 'youtube'
+    albums: isBasic || sources.every((source) => source === 'youtube')
       ? []
       : stats.topAlbums.map((a, i) => ({
           key: `${a.name}|${a.artist}`,
@@ -548,7 +549,13 @@ export function fromLocalStats(
     },
 
     footnote:
-      meta.source === 'youtube'
+      meta.source === 'multiple'
+        ? `Computed locally from your ${sources
+            .map((source) =>
+              source === 'youtube' ? 'YouTube Music' : source === 'apple' ? 'Apple Music' : 'Spotify',
+            )
+            .join(' and ')} exports · nothing left your browser.`
+        : meta.source === 'youtube'
         ? 'Computed locally from your YouTube Takeout · music plays only · Takeout records no listening duration · nothing left your browser.'
         : meta.source === 'apple'
           ? `Computed locally from your Apple Music export${meta.approximateTimes ? ' · daily totals use approximate times' : ''} · nothing left your browser.`

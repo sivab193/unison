@@ -174,6 +174,7 @@ export function parseAppleFiles(files: TextExportFile[]): { plays: Play[]; meta:
     plays,
     meta: {
       source: 'apple',
+      sources: ['apple'],
       years,
       platforms,
       totalPlays: plays.length,

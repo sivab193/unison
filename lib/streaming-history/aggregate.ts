@@ -142,6 +142,7 @@ export function normalize(
     plays,
     meta: {
       source: 'spotify',
+      sources: ['spotify'],
       years: [...years].sort((a, b) => a - b),
       platforms: [...platforms].sort(),
       totalPlays: plays.length,

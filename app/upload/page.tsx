@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ComponentType } from 'react'
 import Link from 'next/link'
-import { Apple, ArrowLeft, Clock, Headphones, ShieldCheck, Youtube } from 'lucide-react'
+import { Apple, ArrowLeft, Check, Clock, Headphones, ShieldCheck, Youtube } from 'lucide-react'
 import { LogoMark } from '@/components/brand/logo'
 import { LocalStatsProvider } from '@/components/providers/stats-provider'
 import { StatsDashboard } from '@/components/stats/dashboard'
@@ -62,7 +62,7 @@ const SOURCES: Record<DataPlatform, SourceGuide> = {
 }
 
 export default function UploadPage() {
-  const [source, setSource] = useState<DataPlatform>('spotify')
+  const [sources, setSources] = useState<DataPlatform[]>(['spotify'])
   const [data, setData] = useState<{ plays: Play[]; meta: ParseMeta } | null>(null)
   const reset = useCallback(() => setData(null), [])
 
@@ -76,7 +76,13 @@ export default function UploadPage() {
     )
   }
 
-  const guide = SOURCES[source]
+  const toggleSource = (source: DataPlatform) => {
+    setSources((selected) =>
+      selected.includes(source)
+        ? selected.filter((item) => item !== source)
+        : [...selected, source],
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,62 +99,80 @@ export default function UploadPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2" aria-label="Music service">
+        <div className="grid grid-cols-3 gap-2" aria-label="Choose music services">
           {(Object.keys(SOURCES) as DataPlatform[]).map((key) => {
             const item = SOURCES[key]
             const Icon = item.icon
-            const active = key === source
+            const active = sources.includes(key)
             return (
-              <button
+              <label
                 key={key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setSource(key)}
                 className={cn(
-                  'flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'relative flex min-h-20 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold transition-colors',
                   active
                     ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                     : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={() => toggleSource(key)}
+                  className="peer sr-only"
+                />
+                <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded border border-current peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
+                  {active && <Check className="h-3.5 w-3.5" />}
+                </span>
                 <Icon className="h-5 w-5" />
                 {item.label}
-              </button>
+              </label>
             )
           })}
         </div>
 
-        <UploadDropzone key={source} source={source} onReady={(plays, meta) => setData({ plays, meta })} />
+        <UploadDropzone
+          sources={sources}
+          onReady={(plays, meta) => setData({ plays, meta })}
+        />
 
-        <section className="space-y-5 rounded-xl bg-card p-5 sm:p-6" aria-labelledby="export-guide">
-          <div className="flex items-center justify-between gap-4">
-            <h2 id="export-guide" className="text-lg font-semibold">
-              Get your {guide.label} export
-            </h2>
-            <a
-              href={guide.href}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+        {sources.map((source) => {
+          const guide = SOURCES[source]
+          return (
+            <section
+              key={source}
+              className="space-y-5 rounded-xl bg-card p-5 sm:p-6"
+              aria-labelledby={`export-guide-${source}`}
             >
-              {guide.linkLabel}
-            </a>
-          </div>
-          <ol className="space-y-4 text-sm leading-relaxed text-muted-foreground">
-            {guide.steps.map((step, index) => (
-              <li key={step} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                  {index + 1}
-                </span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="flex items-start gap-2 rounded-lg bg-primary/8 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            <span>{guide.timing}</span>
-          </div>
-        </section>
+              <div className="flex items-center justify-between gap-4">
+                <h2 id={`export-guide-${source}`} className="text-lg font-semibold">
+                  Get your {guide.label} export
+                </h2>
+                <a
+                  href={guide.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:decoration-primary"
+                >
+                  {guide.linkLabel}
+                </a>
+              </div>
+              <ol className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+                {guide.steps.map((step, index) => (
+                  <li key={step} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                      {index + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className="flex items-start gap-2 rounded-lg bg-primary/8 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                <span>{guide.timing}</span>
+              </div>
+            </section>
+          )
+        })}
 
         <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" />
