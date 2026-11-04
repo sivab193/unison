@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Clock3, Orbit, ShieldCheck } from 'lucide-react'
+import { ArrowLeftRight, ArrowRight, Clock3, ListMusic, Orbit, ShieldCheck, Users } from 'lucide-react'
 import { LogoMark } from '@/components/brand/logo'
 import { LazyHeroScene } from '@/components/three/lazy'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,24 @@ const FEATURES = [
     icon: ShieldCheck,
     title: 'Keep every play private',
     body: 'The ZIP is opened by your browser and never sent to Unison, a music service, or an analytics endpoint.',
+  },
+]
+
+const COMING_SOON = [
+  {
+    icon: ListMusic,
+    title: 'Playlist exports',
+    body: 'Take your playlists out of Unison, in a portable format you can keep and reuse anywhere.',
+  },
+  {
+    icon: ArrowLeftRight,
+    title: 'Playlist converts',
+    body: 'Move a playlist between Spotify, Apple Music, and YouTube Music, instead of rebuilding it by hand.',
+  },
+  {
+    icon: Users,
+    title: 'Cross-platform Jam',
+    body: 'A jam for CarPlay and Android Auto where people on different streaming platforms can add songs to the same session.',
   },
 ]
 
@@ -47,7 +65,7 @@ export default function HomePage() {
 
           <div className="relative z-10 mx-auto w-full max-w-6xl">
             <div className="max-w-3xl space-y-7">
-              <h1 className="text-balance text-5xl font-bold tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+              <h1 className="text-balance text-4xl font-bold tracking-[-0.04em] sm:text-6xl lg:text-7xl">
                 Every play. One private music universe.
               </h1>
               <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground sm:text-xl">
@@ -55,7 +73,7 @@ export default function HomePage() {
                 recap. No account connection, no music API, and no file upload.
               </p>
               <div className="pointer-events-auto flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <Button asChild size="lg" className="h-13 px-7 text-base font-semibold">
+                <Button asChild size="lg" className="h-13 w-full px-7 text-base font-semibold sm:w-auto">
                   <Link href="/upload">
                     Choose your music service <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -77,6 +95,37 @@ export default function HomePage() {
               >
                 <Icon className="mb-4 h-5 w-5 text-primary" />
                 <h2 className="mb-2 text-lg font-semibold text-foreground">{title}</h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-5 pb-24 sm:px-8">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">
+            Coming soon
+          </p>
+          <h2 className="mb-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            Beyond the recap, to the playlist level
+          </h2>
+          <p className="mb-8 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Unison started as a recap, but the plan was always to go further. These are next, and
+            not live yet, because a fully official playlist move across all three services is not
+            possible today, YouTube Music has no official API for it.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {COMING_SOON.map(({ icon: Icon, title, body }) => (
+              <article
+                key={title}
+                className="rounded-lg border border-border bg-card/80 p-5"
+              >
+                <Icon className="mb-4 h-5 w-5 text-primary" />
+                <h3 className="mb-2 flex flex-wrap items-center gap-2 text-base font-semibold text-foreground sm:text-lg">
+                  {title}
+                  <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Coming soon
+                  </span>
+                </h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
               </article>
             ))}
